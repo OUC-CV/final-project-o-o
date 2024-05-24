@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def hdr_to_brightness(hdr_image):
-    B, G, R = cv2.split(hdr_image)
+    R, G, B = cv2.split(hdr_image)
     brightness = 0.265 * R + 0.670 * G + 0.065 * B
     return brightness
 
@@ -95,7 +95,11 @@ def map_hdr_brightness_to_ldr(brightness_channel, LUT):
 
 
 # 加载图片
-hdr_image = cv2.imread('data/input_images/input_images/input_hdr/AtriumMorning.hdr', cv2.IMREAD_ANYDEPTH)
+hdr_image = cv2.imread('data/input_images/input_images/input_hdr/cadik-desk02_mid.hdr', cv2.IMREAD_ANYDEPTH)
+
+
+# 将颜色通道顺序修改为 RGB
+hdr_image = cv2.cvtColor(hdr_image, cv2.COLOR_BGR2RGB)
 
 brightness_channel = hdr_to_brightness(hdr_image)
 
@@ -133,7 +137,7 @@ for i in range(0, len(bins_centers), 10):
 f_histogram = calculate_histogram_2D(brightness_channel, bins_centers)
 # 归一化第一个直方图
 f_histogram = normalize_histogram(f_histogram)
-show_histogram(f_histogram)
+# show_histogram(f_histogram)
 
 print(f"Histogram bins: {f_histogram}")
 
@@ -187,11 +191,24 @@ print(LUT)
 
 
 ldr_brightness_channel = map_hdr_brightness_to_ldr(brightness_channel, LUT)
-ldr_image = np.clip(ldr_brightness_channel, 0, 255).astype(np.uint8)
+
+s = 0.67
+R, G, B = cv2.split(hdr_image)
+ldr_image_R = (R/brightness_channel)**s * ldr_brightness_channel
+ldr_image_G = (G/brightness_channel)**s * ldr_brightness_channel
+ldr_image_B = (B/brightness_channel)**s * ldr_brightness_channel
+
+ldr_image = cv2.merge((ldr_image_R, ldr_image_G, ldr_image_B))
+
+# 将像素值限制在 0 到 255 之间，并转换为 uint8 类型
+ldr_image = np.clip(ldr_image, 0, 255).astype(np.uint8)
 
 
-plt.imshow(ldr_image, cmap='gray')
+
+plt.imshow(ldr_image)
 plt.title('LDR Image (Mapped)')
 plt.axis('off')
 
 plt.show()
+bgr_ldr_image = cv2.cvtColor(ldr_image, cv2.COLOR_RGB2BGR)
+cv2.imwrite("mapped_ldr.jpg", bgr_ldr_image)
